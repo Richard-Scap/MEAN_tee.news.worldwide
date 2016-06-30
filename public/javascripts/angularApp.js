@@ -1,7 +1,7 @@
 var app = angular.module('teeNews', ['ui.router']);
 
 
-///////////router/////////////
+///////////.state router/////////////
 
 app.config(['$stateProvider', '$urlRouterProvider',
 	function($stateProvider, $urlRouterProvider) {
@@ -27,6 +27,28 @@ app.config(['$stateProvider', '$urlRouterProvider',
 			    }]
 			  }
 			})
+
+			.state('login', {
+			  url: '/login',
+			  templateUrl: '/login.html',
+			  controller: 'AuthCtrl',
+			  onEnter: ['$state', 'auth', function($state, auth){
+			    if(auth.isLoggedIn()){
+			      $state.go('home');
+			    }
+			  }]
+			})
+
+			.state('register', {
+				url: '/register',
+				templateUrl: '/register.html',
+				controller: 'AuthCtrl',
+				onEnter: ['$state', 'auth', function($state, auth) {
+			    if(auth.isLoggedIn()) {
+			      $state.go('home');
+			    }
+			  }]
+			});
 
 
 	  $urlRouterProvider.otherwise('home');
@@ -92,6 +114,47 @@ function PostsCtrl($scope, $stateParams, posts, post) {
 	};
 };
 
+////////Authentication Controller////////////////
+
+app.controller('AuthCtrl', AuthCtrl)
+
+AuthCtrl.$inject = ['$scope','$state','auth']
+
+function AuthCtrl($scope, $state, auth) {
+  $scope.user = {};
+
+  $scope.register = function(){
+    auth.register($scope.user).error(function(error) {
+      $scope.error = error;
+    })
+    .then(function() {
+      $state.go('home');
+    });
+  };
+
+  $scope.logIn = function() {
+    auth.logIn($scope.user).error(function(error) {
+      $scope.error = error;
+    })
+    .then(function() {
+      $state.go('home');
+    });
+  };
+};
+
+//////nav controller//////
+app.controller('NavCtrl', NavCtrl)
+NavCtrl.$inject = ['$scope','auth']
+
+function NavCtrl($scope, auth) {
+  $scope.isLoggedIn = auth.isLoggedIn;
+  $scope.currentUser = auth.currentUser;
+  $scope.logOut = auth.logOut;
+};
+
+
+/*    FACTORIES    */
+
 ////////posts factory////////////
 
 app.factory('posts', Posts) 
@@ -123,7 +186,7 @@ function Posts($http) {
   };
 
   o.get = function(id) {
-  	return $http.get('/posts/' + id).then(function(res){
+  	return $http.get('/posts/' + id).then(function(res) {
     	return res.data;
   	});
 	};
@@ -133,8 +196,8 @@ function Posts($http) {
 	};
 
 	o.upvoteComment = function(post, comment) {
-  return $http.put('/posts/' + post._id + '/comments/'+ comment._id + '/upvote')
-    .success(function(data){
+  	return $http.put('/posts/' + post._id + '/comments/'+ comment._id + '/upvote')
+    .success(function(data) {
       comment.upvotes += 1;
     });
 };
@@ -142,7 +205,64 @@ function Posts($http) {
   return o;
 };
 
+////// authentication factory ///////////
+
+app.factory('auth', Auth)
+
+Auth.$inject = ['$http', '$window']
+
+function Auth($http, $window) {
+
+  var auth = {};
+
+  auth.saveToken = function (token) {
+	  $window.localStorage['tee-news-token'] = token;
+	};
+
+	auth.getToken = function () {
+	  return $window.localStorage['tee-news-token'];
+	};
 
 
+	auth.isLoggedIn = function() {
+  	var token = auth.getToken();
+
+	  if(token){
+	    var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+	    return payload.exp > Date.now() / 1000;
+	  } 
+	  else {
+	    return false;
+	  }
+	};
+
+	auth.currentUser = function() {
+	  if(auth.isLoggedIn()) {
+	    var token = auth.getToken();
+	    var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+	    return payload.username;
+	  }
+	};
+
+	auth.register = function(user) {
+	  return $http.post('/register', user).success(function(data) {
+	    auth.saveToken(data.token);
+	  });
+	};
+
+	auth.logIn = function(user) {
+	  return $http.post('/login', user).success(function(data) {
+	    auth.saveToken(data.token);
+	  });
+	};
+
+	auth.logOut = function(){
+	  $window.localStorage.removeItem('tee-news-token');
+	};
+
+  return auth;
+};
  
 
