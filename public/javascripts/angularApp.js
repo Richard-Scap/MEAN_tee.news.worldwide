@@ -60,13 +60,14 @@ app.config(['$stateProvider', '$urlRouterProvider',
 
 app.controller('MainCtrl', MainCtrl)
 
-MainCtrl.$inject = ['$scope', 'posts']
+MainCtrl.$inject = ['$scope', 'posts', 'auth']
 
-function MainCtrl($scope, posts){
+function MainCtrl($scope, posts, auth){
   $scope.addPost = addPost;
   $scope.incrementUpvotes = incrementUpvotes;
   $scope.test = 'Hello world!';
   $scope.posts = posts.posts;  //theoretical db in memory
+  $scope.isLoggedIn = auth.isLoggedIn;
 
 	function addPost() {
 		if(!$scope.title || $scope.title === '') {return alert("Please enter a title.") ;}
@@ -89,12 +90,13 @@ function MainCtrl($scope, posts){
 
 app.controller('PostsCtrl', PostsCtrl)
 
-PostsCtrl.$inject = ['$scope', '$stateParams', 'posts', 'post']
+PostsCtrl.$inject = ['$scope', '$stateParams', 'posts', 'post', 'auth']
 
-function PostsCtrl($scope, $stateParams, posts, post) {
+function PostsCtrl($scope, $stateParams, posts, post, auth) {
 	$scope.post = post;
 	$scope.incrementUpvotes = incrementUpvotes;
 	$scope.addComment = addComment;
+	$scope.isLoggedIn = auth.isLoggedIn;
 
 	function incrementUpvotes(comment) {
 		posts.upvoteComment(post, comment);
@@ -159,9 +161,9 @@ function NavCtrl($scope, auth) {
 
 app.factory('posts', Posts) 
 
-Posts.$inject = ['$http']
+Posts.$inject = ['$http', 'auth']
 
-function Posts($http) {
+function Posts($http, auth) {
 	
 	var o = {    
 		posts: []
@@ -174,13 +176,19 @@ function Posts($http) {
   };
 
   o.create = function(post) {
-  	return $http.post('/posts', post).success(function(data) {
+  	return $http.post('/posts', post, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	})
+  	.success(function(data) {
     	o.posts.push(data);
   	});
 	};
 
 	o.upvote = function(post) {
-  	return $http.put('/posts/' + post._id + '/upvote').success(function(data) {
+  	return $http.put('/posts/' + post._id + '/upvote', null, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	})
+  	.success(function(data) {
       post.upvotes += 1;
     });
   };
@@ -192,15 +200,19 @@ function Posts($http) {
 	};
 
 	o.addComment = function(id, comment) {
-  	return $http.post('/posts/' + id + '/comments', comment);
+  	return $http.post('/posts/' + id + '/comments', comment, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	});
 	};
 
 	o.upvoteComment = function(post, comment) {
-  	return $http.put('/posts/' + post._id + '/comments/'+ comment._id + '/upvote')
+  	return $http.put('/posts/' + post._id + '/comments/'+ comment._id + '/upvote', null, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	})
     .success(function(data) {
       comment.upvotes += 1;
     });
-};
+  };
 
   return o;
 };
