@@ -2,10 +2,17 @@
 var express = require('express');
 //mongodb
 var mongoose = require('mongoose');
+//passport
+var passport = require('passport');
+//mongodb models
 require('./models/Post');
 require('./models/Comment');
+require('./models/User');
+require('./config/passport');
 
 mongoose.connect('mongodb://localhost/news');
+
+
 
 //////////////////////////////////
 var path = require('path');
@@ -30,6 +37,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(passport.initialize());
 
 app.use('/', routes);
 app.use('/users', users);

@@ -1,7 +1,7 @@
 var app = angular.module('teeNews', ['ui.router']);
 
 
-///////////router/////////////
+///////////.state router/////////////
 
 app.config(['$stateProvider', '$urlRouterProvider',
 	function($stateProvider, $urlRouterProvider) {
@@ -28,6 +28,28 @@ app.config(['$stateProvider', '$urlRouterProvider',
 			  }
 			})
 
+			.state('login', {
+			  url: '/login',
+			  templateUrl: '/login.html',
+			  controller: 'AuthCtrl',
+			  onEnter: ['$state', 'auth', function($state, auth){
+			    if(auth.isLoggedIn()){
+			      $state.go('home');
+			    }
+			  }]
+			})
+
+			.state('register', {
+				url: '/register',
+				templateUrl: '/register.html',
+				controller: 'AuthCtrl',
+				onEnter: ['$state', 'auth', function($state, auth) {
+			    if(auth.isLoggedIn()) {
+			      $state.go('home');
+			    }
+			  }]
+			});
+
 
 	  $urlRouterProvider.otherwise('home');
 	}
@@ -38,13 +60,14 @@ app.config(['$stateProvider', '$urlRouterProvider',
 
 app.controller('MainCtrl', MainCtrl)
 
-MainCtrl.$inject = ['$scope', 'posts']
+MainCtrl.$inject = ['$scope', 'posts', 'auth']
 
-function MainCtrl($scope, posts){
+function MainCtrl($scope, posts, auth){
   $scope.addPost = addPost;
   $scope.incrementUpvotes = incrementUpvotes;
   $scope.test = 'Hello world!';
   $scope.posts = posts.posts;  //theoretical db in memory
+  $scope.isLoggedIn = auth.isLoggedIn;
 
 	function addPost() {
 		if(!$scope.title || $scope.title === '') {return alert("Please enter a title.") ;}
@@ -67,12 +90,13 @@ function MainCtrl($scope, posts){
 
 app.controller('PostsCtrl', PostsCtrl)
 
-PostsCtrl.$inject = ['$scope', '$stateParams', 'posts', 'post']
+PostsCtrl.$inject = ['$scope', '$stateParams', 'posts', 'post', 'auth']
 
-function PostsCtrl($scope, $stateParams, posts, post) {
+function PostsCtrl($scope, $stateParams, posts, post, auth) {
 	$scope.post = post;
 	$scope.incrementUpvotes = incrementUpvotes;
 	$scope.addComment = addComment;
+	$scope.isLoggedIn = auth.isLoggedIn;
 
 	function incrementUpvotes(comment) {
 		posts.upvoteComment(post, comment);
@@ -92,13 +116,54 @@ function PostsCtrl($scope, $stateParams, posts, post) {
 	};
 };
 
+////////Authentication Controller////////////////
+
+app.controller('AuthCtrl', AuthCtrl)
+
+AuthCtrl.$inject = ['$scope','$state','auth']
+
+function AuthCtrl($scope, $state, auth) {
+  $scope.user = {};
+
+  $scope.register = function(){
+    auth.register($scope.user).error(function(error) {
+      $scope.error = error;
+    })
+    .then(function() {
+      $state.go('home');
+    });
+  };
+
+  $scope.logIn = function() {
+    auth.logIn($scope.user).error(function(error) {
+      $scope.error = error;
+    })
+    .then(function() {
+      $state.go('home');
+    });
+  };
+};
+
+//////nav controller//////
+app.controller('NavCtrl', NavCtrl)
+NavCtrl.$inject = ['$scope','auth']
+
+function NavCtrl($scope, auth) {
+  $scope.isLoggedIn = auth.isLoggedIn;
+  $scope.currentUser = auth.currentUser;
+  $scope.logOut = auth.logOut;
+};
+
+
+/*    FACTORIES    */
+
 ////////posts factory////////////
 
 app.factory('posts', Posts) 
 
-Posts.$inject = ['$http']
+Posts.$inject = ['$http', 'auth']
 
-function Posts($http) {
+function Posts($http, auth) {
 	
 	var o = {    
 		posts: []
@@ -111,38 +176,105 @@ function Posts($http) {
   };
 
   o.create = function(post) {
-  	return $http.post('/posts', post).success(function(data) {
+  	return $http.post('/posts', post, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	})
+  	.success(function(data) {
     	o.posts.push(data);
   	});
 	};
 
 	o.upvote = function(post) {
-  	return $http.put('/posts/' + post._id + '/upvote').success(function(data) {
+  	return $http.put('/posts/' + post._id + '/upvote', null, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	})
+  	.success(function(data) {
       post.upvotes += 1;
     });
   };
 
   o.get = function(id) {
-  	return $http.get('/posts/' + id).then(function(res){
+  	return $http.get('/posts/' + id).then(function(res) {
     	return res.data;
   	});
 	};
 
 	o.addComment = function(id, comment) {
-  	return $http.post('/posts/' + id + '/comments', comment);
+  	return $http.post('/posts/' + id + '/comments', comment, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	});
 	};
 
 	o.upvoteComment = function(post, comment) {
-  return $http.put('/posts/' + post._id + '/comments/'+ comment._id + '/upvote')
-    .success(function(data){
+  	return $http.put('/posts/' + post._id + '/comments/'+ comment._id + '/upvote', null, {
+  		headers: {Authorization: 'Bearer '+auth.getToken()}
+  	})
+    .success(function(data) {
       comment.upvotes += 1;
     });
-};
+  };
 
   return o;
 };
 
+////// authentication factory ///////////
+
+app.factory('auth', Auth)
+
+Auth.$inject = ['$http', '$window']
+
+function Auth($http, $window) {
+
+  var auth = {};
+
+  auth.saveToken = function (token) {
+	  $window.localStorage['tee-news-token'] = token;
+	};
+
+	auth.getToken = function () {
+	  return $window.localStorage['tee-news-token'];
+	};
 
 
+	auth.isLoggedIn = function() {
+  	var token = auth.getToken();
+
+	  if(token){
+	    var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+	    return payload.exp > Date.now() / 1000;
+	  } 
+	  else {
+	    return false;
+	  }
+	};
+
+	auth.currentUser = function() {
+	  if(auth.isLoggedIn()) {
+	    var token = auth.getToken();
+	    var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+	    return payload.username;
+	  }
+	};
+
+	auth.register = function(user) {
+	  return $http.post('/register', user).success(function(data) {
+	    auth.saveToken(data.token);
+	  });
+	};
+
+	auth.logIn = function(user) {
+	  return $http.post('/login', user).success(function(data) {
+	    auth.saveToken(data.token);
+	  });
+	};
+
+	auth.logOut = function(){
+	  $window.localStorage.removeItem('tee-news-token');
+	};
+
+  return auth;
+};
  
 
