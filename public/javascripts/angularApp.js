@@ -65,7 +65,6 @@ MainCtrl.$inject = ['$scope', 'posts', 'auth']
 function MainCtrl($scope, posts, auth){
   $scope.addPost = addPost;
   $scope.incrementUpvotes = incrementUpvotes;
-  $scope.test = 'Hello world!';
   $scope.posts = posts.posts;  //theoretical db in memory
   $scope.isLoggedIn = auth.isLoggedIn;
 
