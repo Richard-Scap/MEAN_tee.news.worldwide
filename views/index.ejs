@@ -1,15 +1,17 @@
 <html>
 <head>
   <title>Tee News</title>
-
-  	<!-- bootstrap -->
-   <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
-   <!-- angular.js -->
-  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.10/angular.min.js"></script>
+  <!-- bootstrap -->
+  <link rel="stylesheet" href="../bower_components/bootstrap/dist/css/bootstrap.min.css">
+  <!-- <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet"> -->
+  <!-- angular.js -->
+  <script src="../bower_components/angular/angular.min.js"></script>
+  <!-- <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.10/angular.min.js"></script> -->
   <!-- app -->
   <script src="/javascripts/angularApp.js"></script>
   <!-- ui router -->
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.10/angular-ui-router.js"></script>
+  <script src="../bower_components/angular-ui-router/release/angular-ui-router.min.js"></script>
+  <!-- <script src="http://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.10/angular-ui-router.js"></script> -->
 
   <style> .glyphicon-thumbs-up { cursor:pointer } </style>
 </head>
@@ -113,7 +115,7 @@
       <a class="btn btn-primary" href="/#/home" role="button">Back</a>
       
   	</form>
-      <a class="btn btn-primary" href="/#/home" role="button">Back</button>
+      <a ng-hide="isLoggedIn()" class="btn btn-primary" href="/#/home" role="button">Back</button>
 	</script>
 
   <!-- user authentication state -->
