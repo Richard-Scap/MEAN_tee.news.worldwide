@@ -10,7 +10,7 @@ require('./models/Comment');
 require('./models/User');
 require('./config/passport');
 
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/news');
 
 //mongoose.connect('mongodb://localhost/news');
 
