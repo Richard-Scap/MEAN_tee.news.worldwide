@@ -10,9 +10,9 @@ require('./models/Comment');
 require('./models/User');
 require('./config/passport');
 
-mongoose.connect('mongodb://localhost/news');
+mongoose.connect('mongodb://localhost/news' || 'mongodb://scap:password@ds011705.mlab.com:11705/tee-news');
 
-
+//mongoose.connect('mongodb://localhost/news');
 
 //////////////////////////////////
 var path = require('path');
