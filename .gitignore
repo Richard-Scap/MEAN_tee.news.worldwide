@@ -2,3 +2,4 @@
 ./node_module/*
 ./bower_components/
 ./bower_components/*
+npm-debug.log
